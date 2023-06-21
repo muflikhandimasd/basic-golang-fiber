@@ -23,7 +23,6 @@ func ConnectDB(config *Config) {
 		os.Exit(1)
 	}
 
-	DB.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
 	DB.Logger = logger.Default.LogMode(logger.Info)
 
 	log.Println("Running Migrations")

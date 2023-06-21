@@ -28,20 +28,22 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     "http://localhost:3000",
 		AllowHeaders:     "Origin, Content-Type, Accept",
-		AllowMethods:     "GET, POST, PUT, DELETE",
+		AllowMethods:     "GET, POST,PATCH, PUT, DELETE",
 		AllowCredentials: true,
 	}))
 
 	micro.Route("/notes", func(router fiber.Router) {
 		router.Post("/", controllers.CreateNoteHandler)
 		router.Get("", controllers.FindNotes)
+		router.Get("/faker", controllers.FakerNotes)
 	})
 	micro.Route("/notes/:noteId", func(router fiber.Router) {
 		router.Delete("", controllers.DeleteNote)
 		router.Get("", controllers.FindNoteById)
-		router.Patch("", controllers.UpdateNote)
+		router.Put("", controllers.UpdateNote)
 	})
-	micro.Get("/healthchecker", func(c *fiber.Ctx) error {
+
+	micro.Get("/", func(c *fiber.Ctx) error {
 		return c.Status(200).JSON(fiber.Map{
 			"status":  "success",
 			"message": "Welcome to Golang, Fiber, and GORM",

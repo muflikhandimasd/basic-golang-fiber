@@ -1,6 +1,6 @@
-# eCourses API - Golang with SQLite
+# eCourses API - Golang with PostgreSQL
 
-A complete e-learning platform API built with Golang, Fiber framework, and SQLite database using raw SQL queries. Includes a built-in admin panel for managing courses, users, and content.
+A complete e-learning platform API built with Golang, Fiber framework, and PostgreSQL database using raw SQL queries with database migrations. Includes a built-in admin panel for managing courses, users, and content.
 
 ## Features
 
@@ -10,13 +10,15 @@ A complete e-learning platform API built with Golang, Fiber framework, and SQLit
 - **Category System**: Organize courses by categories
 - **Enrollment System**: Students can enroll in courses and track progress
 - **Admin Panel**: Web-based admin interface for managing the platform
-- **Raw SQL Queries**: Direct SQLite queries for optimal performance
+- **Raw SQL Queries**: Direct PostgreSQL queries for optimal performance
+- **Database Migrations**: Automated schema migrations with golang-migrate
 - **RESTful API**: Clean and well-documented API endpoints
 
 ## Tech Stack
 
 - **Backend**: Go 1.24+ with Fiber v2
-- **Database**: SQLite3 with raw SQL queries
+- **Database**: PostgreSQL with raw SQL queries
+- **Migrations**: golang-migrate/migrate
 - **Authentication**: JWT (golang-jwt/jwt/v5)
 - **Password Hashing**: bcrypt
 - **Template Engine**: Fiber HTML templates
@@ -26,7 +28,39 @@ A complete e-learning platform API built with Golang, Fiber framework, and SQLit
 ### Prerequisites
 
 - Go 1.24 or higher
-- SQLite3
+- PostgreSQL 12+ installed and running
+
+### PostgreSQL Setup
+
+1. Install PostgreSQL (if not already installed):
+```bash
+# macOS
+brew install postgresql@15
+brew services start postgresql@15
+
+# Ubuntu/Debian
+sudo apt-get install postgresql postgresql-contrib
+sudo systemctl start postgresql
+
+# Windows
+Download from https://www.postgresql.org/download/windows/
+```
+
+2. Create database:
+```bash
+# Connect to PostgreSQL
+psql -U postgres
+
+# Create database
+CREATE DATABASE ecourses_db;
+
+# Create user (optional)
+CREATE USER ecourses_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE ecourses_db TO ecourses_user;
+
+# Exit
+\q
+```
 
 ### Installation
 
@@ -36,10 +70,26 @@ A complete e-learning platform API built with Golang, Fiber framework, and SQLit
 go mod download
 ```
 
-3. Run the application:
+3. Configure environment variables:
+Edit `app.env` file with your PostgreSQL credentials:
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_DB=ecourses_db
+DB_SSLMODE=disable
+```
+
+4. Run the application:
 ```bash
 go run main.go
 ```
+
+The application will automatically:
+- Connect to PostgreSQL
+- Run database migrations
+- Seed initial data (admin user and categories)
 
 The server will start on `http://localhost:9000`
 
@@ -145,6 +195,55 @@ Authorization: Bearer <token>
 - `PUT /api/enrollments/:id/progress` - Update progress
 - `GET /api/courses/:courseId/enrollments` - Get course enrollments (Instructor/Admin)
 
+## Database Migrations
+
+The application uses `golang-migrate` for database migrations. Migrations are located in the `migrations/` directory.
+
+### Migration Files
+
+- `000001_create_initial_schema.up.sql` - Creates all database tables
+- `000001_create_initial_schema.down.sql` - Drops all database tables
+- `000002_seed_admin_user.up.sql` - Seeds admin user and categories
+- `000002_seed_admin_user.down.sql` - Removes seeded data
+
+### Automatic Migrations
+
+Migrations run automatically when you start the application. The app will:
+1. Connect to PostgreSQL
+2. Check for pending migrations
+3. Apply all pending migrations in order
+4. Start the server
+
+### Manual Migration Commands
+
+You can also run migrations manually using the golang-migrate CLI:
+
+```bash
+# Install migrate CLI
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+# Run all migrations
+migrate -path migrations -database "postgresql://postgres:postgres@localhost:5432/ecourses_db?sslmode=disable" up
+
+# Rollback last migration
+migrate -path migrations -database "postgresql://postgres:postgres@localhost:5432/ecourses_db?sslmode=disable" down 1
+
+# Check migration version
+migrate -path migrations -database "postgresql://postgres:postgres@localhost:5432/ecourses_db?sslmode=disable" version
+```
+
+### Creating New Migrations
+
+To create a new migration:
+
+```bash
+migrate create -ext sql -dir migrations -seq your_migration_name
+```
+
+This creates two files:
+- `NNNNNN_your_migration_name.up.sql` - Apply changes
+- `NNNNNN_your_migration_name.down.sql` - Revert changes
+
 ## Admin Panel
 
 Access the admin panel at: `http://localhost:9000/admin`
@@ -157,7 +256,7 @@ Access the admin panel at: `http://localhost:9000/admin`
 
 ## Database Schema
 
-The application uses SQLite with the following tables:
+The application uses PostgreSQL with the following tables:
 
 - **users**: User accounts with roles (student, instructor, admin)
 - **categories**: Course categories
@@ -166,6 +265,13 @@ The application uses SQLite with the following tables:
 - **enrollments**: Student course enrollments and progress
 - **reviews**: Course reviews and ratings
 - **lesson_progress**: Individual lesson completion tracking
+
+All tables include:
+- Primary keys with SERIAL auto-increment
+- Timestamps (created_at, updated_at)
+- Foreign key constraints with CASCADE/SET NULL
+- Indexes for performance optimization
+- Automatic updated_at triggers
 
 ## Security Features
 
@@ -178,13 +284,27 @@ The application uses SQLite with the following tables:
 
 ```
 basic-golang-fiber/
-├── controllers/     # API and Admin controllers
-├── database/       # Database layer with raw SQL
-├── middleware/     # Auth middleware
-├── models/         # Data models
-├── utils/          # Helper functions
-├── views/          # HTML templates
-└── main.go         # Application entry point
+├── controllers/          # API and Admin controllers
+├── database/            # Database layer with raw SQL
+│   ├── postgres.go      # PostgreSQL connection
+│   ├── migrate.go       # Migration runner
+│   ├── user_queries.go  # User CRUD operations
+│   ├── course_queries.go
+│   ├── lesson_queries.go
+│   ├── enrollment_queries.go
+│   └── category_queries.go
+├── migrations/          # Database migration files
+│   ├── 000001_create_initial_schema.up.sql
+│   ├── 000001_create_initial_schema.down.sql
+│   ├── 000002_seed_admin_user.up.sql
+│   └── 000002_seed_admin_user.down.sql
+├── middleware/          # Auth middleware
+├── models/              # Data models
+├── utils/               # Helper functions
+├── views/               # HTML templates
+├── initializers/        # Config loaders
+├── app.env             # Environment configuration
+└── main.go             # Application entry point
 ```
 
 ## License

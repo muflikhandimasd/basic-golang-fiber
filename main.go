@@ -5,6 +5,7 @@ import (
 
 	"basic-golang-fiber/controllers"
 	"basic-golang-fiber/database"
+	"basic-golang-fiber/initializers"
 	"basic-golang-fiber/middleware"
 
 	"github.com/gofiber/fiber/v2"
@@ -14,19 +15,29 @@ import (
 )
 
 func init() {
-	// Initialize SQLite database
-	if err := database.InitDB("./ecourses.db"); err != nil {
+	// Load configuration
+	config, err := initializers.LoadConfig(".")
+	if err != nil {
+		log.Fatal("Failed to load environment variables:", err)
+	}
+
+	// Initialize PostgreSQL database
+	dbConfig := database.Config{
+		Host:     config.DBHost,
+		Port:     config.DBPort,
+		User:     config.DBUserName,
+		Password: config.DBUserPassword,
+		DBName:   config.DBName,
+		SSLMode:  config.DBSSLMode,
+	}
+
+	if err := database.InitDB(dbConfig); err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Create tables
-	if err := database.CreateTables(); err != nil {
-		log.Fatal("Failed to create tables:", err)
-	}
-
-	// Seed admin user
-	if err := database.SeedAdminUser(); err != nil {
-		log.Println("Warning: Failed to seed admin user:", err)
+	// Run database migrations
+	if err := database.RunMigrations(dbConfig); err != nil {
+		log.Fatal("Failed to run migrations:", err)
 	}
 }
 
@@ -55,7 +66,7 @@ func main() {
 	api.Get("/", func(c *fiber.Ctx) error {
 		return c.Status(200).JSON(fiber.Map{
 			"status":  "success",
-			"message": "Welcome to eCourses API - Golang with SQLite",
+			"message": "Welcome to eCourses API - Golang with PostgreSQL",
 		})
 	})
 

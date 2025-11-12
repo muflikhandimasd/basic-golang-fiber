@@ -10,6 +10,7 @@ type Config struct {
 	DBUserPassword string `mapstructure:"DB_PASSWORD"`
 	DBName         string `mapstructure:"DB_DB"`
 	DBPort         string `mapstructure:"DB_PORT"`
+	DBSSLMode      string `mapstructure:"DB_SSLMODE"`
 
 	ClientOrigin string `mapstructure:"CLIENT_ORIGIN"`
 }
